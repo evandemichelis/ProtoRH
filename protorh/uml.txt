@@ -1,0 +1,77 @@
++--------------------------------------+
+|             ProtoRH API             |
++--------------------------------------+
+| - Database : Postgresql             |
+| - Salt : string                     |
+| - SecretKey : string                |
+| - JWTSecretKey : string             |
+| - API Endpoints                     |
+|                                    |
+| +----------------------------------+
+| | - User                           |
+| +----------------------------------+
+| | - ID : int                       |
+| | - Email : string                 |
+| | - Password : string (hashed)     |
+| | - Firstname : string             |
+| | - Lastname : string              |
+| | - BirthdayDate : date            |
+| | - Address : string               |
+| | - PostalCode : string            |
+| | - Age : int                      |
+| | - Meta : JSON                    |
+| | - RegistrationDate : date        |
+| | - Token : string (hashed)        |
+| | - Role : string                  |
+| +----------------------------------+
+| | + Create()                       |
+| | + Update()                       |
+| | + UpdatePassword()               |
+| | + GetUser()                      |
+| | + UploadProfilePicture()         |
+| +----------------------------------+
+|
+| +----------------------------------+
+| | - Department                     |
+| +----------------------------------+
+| | - ID : int                       |
+| | - Name : string                  |
+| +----------------------------------+
+| | + AddUserToDepartment()          |
+| | + RemoveUserFromDepartment()     |
+| | + GetUsersInDepartment()         |
+| +----------------------------------+
+|
+| +----------------------------------+
+| | - RequestRH                      |
+| +----------------------------------+
+| | - ID : int                       |
+| | - UserID : int                   |
+| | - Content : string               |
+| | - RegistrationDate : date        |
+| | - Visibility : boolean           |
+| | - Close : boolean                |
+| | - LastAction : date              |
+| | - ContentHistory : JSON[]        |
+| +----------------------------------+
+| | + CreateRequestRH()              |
+| | + UpdateRequestRH()              |
+| | + RemoveRequestRH()              |
+| | + GetRequestRH()                 |
+| +----------------------------------+p
+|
+| +----------------------------------+
+| | - Event                          |
+| +----------------------------------+
+| | - ID : int                       |
+| | - Name : string                  |
+| | - Date : date                    |
+| | - Description : string           |
+| | - UserID : int                   |
+| | - DepartmentID : int             |
+| +----------------------------------+
+| | + CreateEvent()                  |
+| | + GetEvent()                     |
+| | + RemoveEvent()                  |
+| +----------------------------------+
++--------------------------------------+
