@@ -1,10 +1,14 @@
 import subprocess, uvicorn
+from psycopg2 import Date
 from fastapi import FastAPI, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, Float, text
+from sqlalchemy import DATE, DateTime, JSON, Boolean, create_engine, Column, Integer, String, Float, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import database_exists, create_database
-from pydantic import BaseModel
+from pydantic import BaseModel, Json, NaiveDatetime
+from typing import Dict
+import json
+
 
 DATABASE_URL = "postgresql://lounes:lehacker147@localhost/proto"
 engine = create_engine(DATABASE_URL)
@@ -15,25 +19,37 @@ if not database_exists(engine.url):
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-class Item(Base):
-    __tablename__ = "items"
+class User(Base):
+    __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    price = Column(Float)
-    quantity = Column(Integer)
+    user_id = Column(Integer, primary_key=True, autoincrement=True)
+    Email = Column(String(255), nullable=False)
+    Password = Column(String, nullable=False)
+    Firstname = Column(String(50))
+    Lastname = Column(String(50))
+    BirthdayDate = Column(DateTime, nullable=True)
+    Address = Column(String(255))
+    PostalCode = Column(String(10))
+    Age = Column(Integer)
+    Meta = Column(JSON)
+    RegistrationDate = Column(DateTime, nullable=True)
+    Token = Column(String)
+    Role = Column(String(20)) 
 
 
-class ItemCreate (BaseModel):
-    name : str
-    price : float
-    quantity : int
-
-class ItemUpdate (BaseModel):
-    name : str
-    price : float
-    quantity : int
-
+class UserCreate(BaseModel):
+    Email: str
+    Password: str
+    Firstname: str
+    Lastname: str
+    BirthdayDate: NaiveDatetime
+    Address: str
+    PostalCode: str
+    Age: int
+    Meta: Dict
+    RegistrationDate: NaiveDatetime
+    Token: str
+    Role: str
 
 Base.metadata.create_all(bind=engine)
 
@@ -50,25 +66,45 @@ async def stop_server():
     subprocess.call(["pkill", "uvicorn"])
     return {"message" : "Server Stopped"}
 
-@app.post("/items/", response_model=ItemCreate)
-async def create_item(item: ItemCreate):
-    query = text("INSERT INTO items (name, price, quantity) VALUES (:name, :price, :quantity) RETURNING *")
+
+# Endpoint : /users
+# Type : POST
+# this endpoint return à json string containing "Hello Link!"
+@app.post("/users/", response_model=UserCreate)
+async def create_user(user: UserCreate):
+    query = text("INSERT INTO users (\"Email\", \"Password\", \"Firstname\", \"Lastname\", \"BirthdayDate\", \"Address\", \"PostalCode\", \"Age\", \"Meta\", \"RegistrationDate\", \"Token\", \"Role\") VALUES (:Email, :Password, :Firstname, :Lastname, :BirthdayDate, :Address, :PostalCode, :Age, :Meta, :RegistrationDate, :Token, :Role) RETURNING *")
     values = {
-        "name" : item.name,
-        "price" : item.price,
-        "quantity" : item.quantity
+        "Email" : user.Email,
+        "Password" : user.Password,
+        "Firstname" : user.Firstname,
+        "Lastname" : user.Lastname,
+        "BirthdayDate" : user.BirthdayDate,
+        "Address" : user.Address,
+        "PostalCode" : user.PostalCode,
+        "Age" : user.Age,
+        "Meta" : json.dumps(user.Meta),
+        "RegistrationDate" : user.RegistrationDate,
+        "Token" : user.Token,
+        "Role" : user.Role
     }
     with engine.begin() as conn:
         result = conn.execute(query, values)
         return result.fetchone()
 
-@app.delete("/items/{item_id}", response_model=ItemCreate)
-async def delete_item(item_id : int):
-    query = text("DELETE FROM items WHERE id = :item_id RETURNING *")
-    values = {"item_id": item_id}
+
+
+# Endpoint : /users
+# Type : DELETE
+# this endpoint return à json string containing "Hello Link!"
+@app.delete("/users/{user_id}", response_model=UserCreate)
+async def delete_user(user_id : int):
+    query = text("DELETE FROM users WHERE id = :user_id RETURNING *")
+    values = {"user_id": user_id}
     with engine.begin() as conn:
         result = conn.execute(query, values)
-        deleted_item = result.fetchone()
-        if not deleted_item:
-            raise HTTPException(status_code=404, detail ="Item not found")
-        return deleted_item
+        deleted_user = result.fetchone()
+        if not deleted_user:
+            raise HTTPException(status_code=404, detail ="User not found")
+        return deleted_user
+    
+  
