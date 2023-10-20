@@ -8,6 +8,9 @@ from sqlalchemy_utils import database_exists, create_database
 from pydantic import BaseModel, Json, NaiveDatetime
 from typing import Dict
 import json
+from models import Base, User, Department
+from user_models import UserCreate, UserUpdate
+
 
 
 DATABASE_URL = "postgresql://lounes:lehacker147@localhost/proto"
@@ -18,38 +21,7 @@ if not database_exists(engine.url):
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-class User(Base):
-    __tablename__ = 'users'
 
-    user_id = Column(Integer, primary_key=True, autoincrement=True)
-    Email = Column(String(255), nullable=False)
-    Password = Column(String, nullable=False)
-    Firstname = Column(String(50))
-    Lastname = Column(String(50))
-    BirthdayDate = Column(DateTime, nullable=True)
-    Address = Column(String(255))
-    PostalCode = Column(String(10))
-    Age = Column(Integer)
-    Meta = Column(JSON)
-    RegistrationDate = Column(DateTime, nullable=True)
-    Token = Column(String)
-    Role = Column(String(20)) 
-
-
-class UserCreate(BaseModel):
-    Email: str
-    Password: str
-    Firstname: str
-    Lastname: str
-    BirthdayDate: NaiveDatetime
-    Address: str
-    PostalCode: str
-    Age: int
-    Meta: Dict
-    RegistrationDate: NaiveDatetime
-    Token: str
-    Role: str
 
 Base.metadata.create_all(bind=engine)
 
@@ -69,7 +41,7 @@ async def stop_server():
 
 # Endpoint : /users
 # Type : POST
-# this endpoint return à json string containing "Hello Link!"
+# Permet de créer un nouvel utilisateur
 @app.post("/users/", response_model=UserCreate)
 async def create_user(user: UserCreate):
     query = text("INSERT INTO users (\"Email\", \"Password\", \"Firstname\", \"Lastname\", \"BirthdayDate\", \"Address\", \"PostalCode\", \"Age\", \"Meta\", \"RegistrationDate\", \"Token\", \"Role\") VALUES (:Email, :Password, :Firstname, :Lastname, :BirthdayDate, :Address, :PostalCode, :Age, :Meta, :RegistrationDate, :Token, :Role) RETURNING *")
@@ -94,6 +66,27 @@ async def create_user(user: UserCreate):
 
 
 # Endpoint : /users
+# Type : PUT
+# Permet de mettre a jour un utilisateur
+@app.put("/users/{user_id}", response_model=User)
+async def update_user(user_id: int, user_update: UserUpdate):
+    # Récupérez l'utilisateur existant en fonction de l'ID
+    user = SessionLocal().query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Mettez à jour les champs de l'utilisateur avec les données de user_update
+    for key, value in user_update.dict().items():
+        setattr(user, key, value)
+
+    # Enregistrez les modifications dans la base de données
+    SessionLocal().commit()
+
+    return user
+
+
+
+# Endpoint : /users
 # Type : DELETE
 # this endpoint return à json string containing "Hello Link!"
 @app.delete("/users/{user_id}", response_model=UserCreate)
@@ -106,5 +99,3 @@ async def delete_user(user_id : int):
         if not deleted_user:
             raise HTTPException(status_code=404, detail ="User not found")
         return deleted_user
-    
-  
