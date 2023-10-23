@@ -1,16 +1,19 @@
 import subprocess, uvicorn
 from psycopg2 import Date
-from fastapi import FastAPI, HTTPException
-from sqlalchemy import DATE, DateTime, JSON, Boolean, create_engine, Column, Integer, String, Float, text
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy import DATE, DateTime, JSON, Boolean, create_engine, Column, Integer, String, Float, text, or_
 from sqlalchemy.orm import sessionmaker
+from jose import JWSError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import database_exists, create_database
 from pydantic import BaseModel, Json, NaiveDatetime
-from typing import Dict
+from typing import Dict, List
 import json
 from models import Base, User, Department
 from user_models import UserCreate, UserUpdate
-
+import bcrypt
 
 
 DATABASE_URL = "postgresql://lounes:lehacker147@localhost/proto"
@@ -38,11 +41,25 @@ async def stop_server():
     subprocess.call(["pkill", "uvicorn"])
     return {"message" : "Server Stopped"}
 
+# Endpoint pour récupérer la liste des utilisateurs
+@app.get("/users/", response_model=List[UserUpdate])
+async def read_users():
+    users = SessionLocal().query(User).all()
+    return users
+
+
+# Endpoint pour récupérer un utilisateur par ID
+@app.get("/users/{user_id}", response_model=UserUpdate)
+async def read_user(user_id: int):
+    user = SessionLocal().query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 # Endpoint : /users
 # Type : POST
 # Permet de créer un nouvel utilisateur
-@app.post("/users/", response_model=UserCreate)
+@app.post("/users/{user_id}", response_model=UserCreate)
 async def create_user(user: UserCreate):
     query = text("INSERT INTO users (\"Email\", \"Password\", \"Firstname\", \"Lastname\", \"BirthdayDate\", \"Address\", \"PostalCode\", \"Age\", \"Meta\", \"RegistrationDate\", \"Token\", \"Role\") VALUES (:Email, :Password, :Firstname, :Lastname, :BirthdayDate, :Address, :PostalCode, :Age, :Meta, :RegistrationDate, :Token, :Role) RETURNING *")
     values = {
@@ -68,7 +85,7 @@ async def create_user(user: UserCreate):
 # Endpoint : /users
 # Type : PUT
 # Permet de mettre a jour un utilisateur
-@app.put("/users/{user_id}", response_model=User)
+@app.put("/users/{user_id}", response_model=UserUpdate)
 async def update_user(user_id: int, user_update: UserUpdate):
     # Récupérez l'utilisateur existant en fonction de l'ID
     user = SessionLocal().query(User).filter(User.id == user_id).first()

@@ -1,40 +1,42 @@
-CREATE TABLE user(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    Email VARCHAR(255) NOT NULL,
-    Password text NOT NULL,
-    Firstname VARCHAR(50),
-    Lastname VARCHAR(50),
-    BirthdayDate DATE,
-    Address VARCHAR(255),
-    PostalCode VARCHAR(10)
-    Age INT
-    Meta JSON
-    RegistrationDate DATE
-    Token text
-    Role VARCHAR(20)
+CREATE TABLE "user" (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    password TEXT NOT NULL,
+    firstname VARCHAR(50),
+    lastname VARCHAR(50),
+    birthdaydate DATE,
+    address VARCHAR(255),
+    postalcode VARCHAR(10),
+    age INT,
+    meta JSON,
+    registrationdate DATE,
+    token TEXT,
+    role VARCHAR(20)
 );
 
-CREATE TABLE department(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    Name VARCHAR(100) NOT NULL
+
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE request_rh(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    UserID INT,
-    Content text,
-    RegistrationDate DATE,
-    Visibility Boolean,
-    Close Boolean,
-    LastAction DATE,
-    ContentHistory JSON
+
+CREATE TABLE request_rh (
+    id SERIAL PRIMARY KEY,
+    userid INT,
+    content TEXT,
+    registrationdate DATE,
+    visibility BOOLEAN,
+    close BOOLEAN,
+    lastaction DATE,
+    contenthistory JSON
 );
 
-CREATE TABLE event(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    Name VARCHAR(255) NOT NULL,
-    Date DATE,
-    Description text,
-    UserID INT,
-    DepartmentID INT
-);a
+CREATE TABLE event (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    date DATE,
+    description TEXT,
+    userid INT,
+    departmentid INT
+);
