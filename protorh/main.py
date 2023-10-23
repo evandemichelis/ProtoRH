@@ -1,5 +1,6 @@
 import subprocess, uvicorn
 from psycopg2 import Date
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import DATE, DateTime, JSON, Boolean, create_engine, Column, Integer, String, Float, text, or_
@@ -11,9 +12,10 @@ from sqlalchemy_utils import database_exists, create_database
 from pydantic import BaseModel, Json, NaiveDatetime
 from typing import Dict, List
 import json
-from models import Base, User, Department
-from user_models import UserCreate, UserUpdate
-import bcrypt
+from models.models import Base, User, Department
+from models.user_models import UserCreate, UserUpdate
+from config import *
+import hashlib
 
 
 DATABASE_URL = "postgresql://lounes:lehacker147@localhost/proto"
@@ -56,25 +58,40 @@ async def read_user(user_id: int):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+
+def calculate_age(birthdate):
+    today = datetime.now()
+    age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+    return age
+
 # Endpoint : /users
 # Type : POST
 # Permet de créer un nouvel utilisateur
-@app.post("/users/{user_id}", response_model=UserCreate)
+@app.post("/users/create", response_model=UserCreate)
 async def create_user(user: UserCreate):
+    
+
+    if user.Password_repeat != user.Password:
+        raise HTTPException(status_code=404, detail="Password invalid!")
+    password_salt = user.Password + salt
+    password_hash = hashlib.md5(password_salt).hexdigest()
+
+    age = calculate_age(user.BirthdayDate)
+    
     query = text("INSERT INTO users (\"Email\", \"Password\", \"Firstname\", \"Lastname\", \"BirthdayDate\", \"Address\", \"PostalCode\", \"Age\", \"Meta\", \"RegistrationDate\", \"Token\", \"Role\") VALUES (:Email, :Password, :Firstname, :Lastname, :BirthdayDate, :Address, :PostalCode, :Age, :Meta, :RegistrationDate, :Token, :Role) RETURNING *")
     values = {
         "Email" : user.Email,
-        "Password" : user.Password,
+        "Password" : password_hash,
         "Firstname" : user.Firstname,
         "Lastname" : user.Lastname,
         "BirthdayDate" : user.BirthdayDate,
         "Address" : user.Address,
         "PostalCode" : user.PostalCode,
-        "Age" : user.Age,
-        "Meta" : json.dumps(user.Meta),
+        "Age" : age,
+        "Meta" : json.dumps({}),
         "RegistrationDate" : user.RegistrationDate,
-        "Token" : user.Token,
-        "Role" : user.Role
+        "Token" : token,
+        "Role" : "user"
     }
     with engine.begin() as conn:
         result = conn.execute(query, values)

@@ -1,0 +1,9 @@
+# config.py
+
+salt = "a5601f40db7b79d80cc50e0a4649157d"
+SECRET_KEY = "3eeea2a5b718cdfd221512c4b7612553bd21bebb4178c7d3805c00291dbf216d"
+DATABASE_HOST = "localhost"
+DATABASE_PORT = 4242
+DATABASE_NAME = "proto"
+DATABASE_USER = "lounes"
+DATABASE_PASSWORD = "lehacker147"
