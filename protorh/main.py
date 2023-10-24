@@ -13,7 +13,7 @@ from pydantic import BaseModel, Json, NaiveDatetime
 from typing import Dict, List
 import json
 from models.models import Base, User, Department
-from models.user_models import UserCreate, UserUpdate
+from models.user_models import UserCreate, UserUpdate, UserConnect
 from config import *
 import hashlib
 
@@ -57,7 +57,11 @@ async def read_user(user_id: int):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
-
+def hash_djb2(s):                                                                                                                                
+    hash = 5381
+    for x in s:
+        hash = (( hash << 5) + hash) + ord(x)
+    return hash & 0xFFFFFFFF
 
 def calculate_age(birthdate):
     today = datetime.now()
@@ -77,7 +81,7 @@ async def create_user(user: UserCreate):
     password_hash = hashlib.md5(password_salt).hexdigest()
 
     age = calculate_age(user.BirthdayDate)
-    
+    token_hash = hash_djb2(user.Email + user.Firstname + user.Lastname + salt)
     query = text("INSERT INTO users (\"Email\", \"Password\", \"Firstname\", \"Lastname\", \"BirthdayDate\", \"Address\", \"PostalCode\", \"Age\", \"Meta\", \"RegistrationDate\", \"Token\", \"Role\") VALUES (:Email, :Password, :Firstname, :Lastname, :BirthdayDate, :Address, :PostalCode, :Age, :Meta, :RegistrationDate, :Token, :Role) RETURNING *")
     values = {
         "Email" : user.Email,
@@ -90,7 +94,7 @@ async def create_user(user: UserCreate):
         "Age" : age,
         "Meta" : json.dumps({}),
         "RegistrationDate" : user.RegistrationDate,
-        "Token" : token,
+        "Token" : token_hash,
         "Role" : "user"
     }
     with engine.begin() as conn:
@@ -98,11 +102,23 @@ async def create_user(user: UserCreate):
         return result.fetchone()
 
 
+# Endpoint : /connect 
+# Type : POST
+# Connexion avec un jeton JWT
+@app.post("/connect/", response_model=UserConnect):
+async def connect_user(user_id: int, user_connect: UserConnect):
+    if user_connect.Email != UserCreate.Email:
+        raise HTTPException(status_code=404, detail="Password invalid!")
+
+
+
+
+
 
 # Endpoint : /users
 # Type : PUT
 # Permet de mettre a jour un utilisateur
-@app.put("/users/{user_id}", response_model=UserUpdate)
+@app.patch("/users/{user_id}", response_model=UserUpdate)
 async def update_user(user_id: int, user_update: UserUpdate):
     # Récupérez l'utilisateur existant en fonction de l'ID
     user = SessionLocal().query(User).filter(User.id == user_id).first()

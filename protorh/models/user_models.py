@@ -23,3 +23,7 @@ class UserUpdate(BaseModel):
     Meta: Dict
     Token: str
     Role: str
+
+class UserConnect(BaseModel):
+    Email: str
+    Password: str
