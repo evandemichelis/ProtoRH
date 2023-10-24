@@ -11,6 +11,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     Email = Column(String, unique=True, index=True)
     Password = Column(String)
+    Password_repeat = Column(String)
     Firstname = Column(String)
     Lastname = Column(String)
     BirthdayDate = Column(DateTime)

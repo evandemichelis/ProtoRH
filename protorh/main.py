@@ -14,8 +14,8 @@ from typing import Dict, List
 import json
 from models.models import Base, User, Department
 from models.user_models import UserCreate, UserUpdate, UserConnect
-from config import *
 import hashlib
+from config import *
 
 
 DATABASE_URL = "postgresql://lounes:lehacker147@localhost/proto"
@@ -73,43 +73,58 @@ def calculate_age(birthdate):
 # Permet de créer un nouvel utilisateur
 @app.post("/users/create", response_model=UserCreate)
 async def create_user(user: UserCreate):
-    
+    # Vérifiez que le mot de passe correspond à la répétition du mot de passe
+    if user.Password != user.Password_repeat:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
 
-    if user.Password_repeat != user.Password:
-        raise HTTPException(status_code=404, detail="Password invalid!")
+    # Générez le hash du mot de passe (MD5 du mot de passe + sel)
     password_salt = user.Password + salt
-    password_hash = hashlib.md5(password_salt).hexdigest()
+    password_hash = hashlib.md5(password_salt.encode()).hexdigest()
 
+    # Calculez l'âge en fonction de la date de naissance
     age = calculate_age(user.BirthdayDate)
+
+    # Générez le jeton (hash de type djb2 du mail + firstname + lastname + sel)
     token_hash = hash_djb2(user.Email + user.Firstname + user.Lastname + salt)
-    query = text("INSERT INTO users (\"Email\", \"Password\", \"Firstname\", \"Lastname\", \"BirthdayDate\", \"Address\", \"PostalCode\", \"Age\", \"Meta\", \"RegistrationDate\", \"Token\", \"Role\") VALUES (:Email, :Password, :Firstname, :Lastname, :BirthdayDate, :Address, :PostalCode, :Age, :Meta, :RegistrationDate, :Token, :Role) RETURNING *")
+
+    # Créez une nouvelle entrée dans la base de données
+    query = text(
+        "INSERT INTO users (\"Email\", \"Password\",\"Password_repeat\", \"Firstname\", \"Lastname\", \"BirthdayDate\", \"Address\", \"PostalCode\", \"Age\", \"Meta\", \"RegistrationDate\", \"Token\", \"Role\") "
+        "VALUES (:Email, :Password, :Password_repeat, :Firstname, :Lastname, :BirthdayDate, :Address, :PostalCode, :Age, :Meta, :RegistrationDate, :Token, :Role) RETURNING *"
+    )
     values = {
-        "Email" : user.Email,
-        "Password" : password_hash,
-        "Firstname" : user.Firstname,
-        "Lastname" : user.Lastname,
-        "BirthdayDate" : user.BirthdayDate,
-        "Address" : user.Address,
-        "PostalCode" : user.PostalCode,
-        "Age" : age,
-        "Meta" : json.dumps({}),
-        "RegistrationDate" : user.RegistrationDate,
-        "Token" : token_hash,
-        "Role" : "user"
+        "Email": user.Email,
+        "Password": password_hash,
+        "Password_repeat": password_hash,
+        "Firstname": user.Firstname,
+        "Lastname": user.Lastname,
+        "BirthdayDate": user.BirthdayDate,
+        "Address": user.Address,
+        "PostalCode": user.PostalCode,
+        "Age": age,
+        "Meta": json.dumps({}),
+        "RegistrationDate": datetime.now(),
+        "Token": token_hash,
+        "Role": "user",
     }
-    with engine.begin() as conn:
+
+    with engine.connect() as conn:
         result = conn.execute(query, values)
-        return result.fetchone()
+        new_user = result.fetchone()
+
+    return new_user
 
 
 # Endpoint : /connect 
 # Type : POST
 # Connexion avec un jeton JWT
-@app.post("/connect/", response_model=UserConnect):
+@app.post("/connect/", response_model=UserConnect)
 async def connect_user(user_id: int, user_connect: UserConnect):
     if user_connect.Email != UserCreate.Email:
+        raise HTTPException(status_code=404, detail="Email invalid!")
+    
+    if user_connect.Password != UserCreate.Password:
         raise HTTPException(status_code=404, detail="Password invalid!")
-
 
 
 

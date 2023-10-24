@@ -2,6 +2,7 @@ CREATE TABLE "user" (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
     password TEXT NOT NULL,
+    password_repeat TEXT,
     firstname VARCHAR(50),
     lastname VARCHAR(50),
     birthdaydate DATE,
@@ -13,6 +14,7 @@ CREATE TABLE "user" (
     token TEXT,
     role VARCHAR(20)
 );
+
 
 
 CREATE TABLE department (
