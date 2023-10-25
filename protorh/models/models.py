@@ -9,19 +9,18 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    Email = Column(String, unique=True, index=True)
-    Password = Column(String)
-    Password_repeat = Column(String)
-    Firstname = Column(String)
-    Lastname = Column(String)
-    BirthdayDate = Column(DateTime)
-    Address = Column(String)
-    PostalCode = Column(String)
-    Age = Column(Integer)
-    Meta = Column(JSON)
-    RegistrationDate = Column(DateTime)
-    Token = Column(String)
-    Role = Column(String)
+    email = Column(String, unique=True, index=True)
+    password = Column(String)
+    firstname = Column(String)
+    lastname = Column(String)
+    birthdaydate = Column(DateTime)
+    address = Column(String)
+    postalcode = Column(String)
+    age = Column(Integer)
+    meta = Column(JSON)
+    registrationdate = Column(DateTime)
+    token = Column(String)
+    role = Column(String)
 
 # Modèle Department
 class Department(Base):

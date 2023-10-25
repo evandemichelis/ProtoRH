@@ -4,25 +4,30 @@ from pydantic import BaseModel, Json, NaiveDatetime
 from typing import Dict
 
 class UserCreate(BaseModel):
-    Email: str
-    Password: str
-    Password_repeat : str
-    Firstname: str
-    Lastname: str
-    BirthdayDate: NaiveDatetime
-    Address: str
-    PostalCode: str
+    email: str
+    password: str
+    firstname: str
+    lastname: str
+    birthdaydate: NaiveDatetime
+    address: str
+    postalcode: str
+    age: int = 0
+    meta: Dict = {}
+    token: str = ""  
+    role: str = ""  
+
+
 class UserUpdate(BaseModel):
-    Email: str
-    Firstname: str
-    Lastname: str
-    BirthdayDate: NaiveDatetime
-    Address: str
-    PostalCode: str
-    Age: int
-    Meta: Dict
-    Token: str
-    Role: str
+    email: str
+    firstname: str
+    lastname: str
+    birthdaydate: NaiveDatetime
+    address: str
+    postalcode: str
+    age: int
+    meta: Dict
+    token: str
+    role: str
 
 class UserConnect(BaseModel):
     Email: str

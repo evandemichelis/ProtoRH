@@ -1,37 +1,37 @@
-CREATE TABLE "user" (
+CREATE TABLE "users" (
     id SERIAL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    password TEXT NOT NULL,
-    password_repeat TEXT,
-    firstname VARCHAR(50),
-    lastname VARCHAR(50),
-    birthdaydate DATE,
-    address VARCHAR(255),
-    postalcode VARCHAR(10),
-    age INT,
-    meta JSON,
-    registrationdate DATE,
-    token TEXT,
-    role VARCHAR(20)
+    Email VARCHAR(255) NOT NULL,
+    Password TEXT NOT NULL,
+    Firstname VARCHAR(50),
+    Lastname VARCHAR(50),
+    BirthdayDate DATE,
+    Address VARCHAR(255),
+    PostalCode VARCHAR(10),
+    Age INT,
+    Meta JSON,
+    RegistrationDate DATE,
+    Token TEXT,
+    Role VARCHAR(20)
 );
+
 
 
 
 CREATE TABLE department (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL
+    Name VARCHAR(100) NOT NULL
 );
 
 
 CREATE TABLE request_rh (
     id SERIAL PRIMARY KEY,
-    userid INT,
-    content TEXT,
-    registrationdate DATE,
-    visibility BOOLEAN,
-    close BOOLEAN,
-    lastaction DATE,
-    contenthistory JSON
+    UserID INT,
+    Content TEXT,
+    RegistrationDate DATE,
+    Visibility BOOLEAN,
+    Close BOOLEAN,
+    Lastaction DATE,
+    Contenthistory JSON
 );
 
 CREATE TABLE event (
