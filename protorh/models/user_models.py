@@ -30,5 +30,11 @@ class UserUpdate(BaseModel):
     role: str
 
 class UserConnect(BaseModel):
-    Email: str
-    Password: str
+    email: str
+    password: str
+
+class UpdatePassword(BaseModel):
+    email: str
+    old_password: str
+    new_password: str
+    repeat_new_password: str

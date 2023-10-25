@@ -24,7 +24,7 @@ class User(Base):
 
 # Modèle Department
 class Department(Base):
-    __tablename__ = "departments"
+    __tablename__ = "department"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)

@@ -13,9 +13,29 @@ from pydantic import BaseModel, Json, NaiveDatetime
 from typing import Dict, List
 import json
 from models.models import Base, User, Department
-from models.user_models import UserCreate, UserUpdate, UserConnect
+from models.user_models import UserCreate, UserUpdate, UserConnect, UpdatePassword
 import hashlib
-from config import *
+import os
+from dotenv import load_dotenv
+
+env_file_path = os.path.join(os.path.dirname(__file__), 'protorh.env')
+
+if os.path.exists(env_file_path):
+    load_dotenv(dotenv_path=env_file_path)
+
+
+
+salt = os.getenv('salt')
+SECRET_KEY = os.getenv('SECRET_KEY')
+DATABASE_HOST = os.getenv('DATABASE_HOST')
+DATABASE_PORT = os.getenv('DATABASE_PORT')
+DATABASE_NAME = os.getenv('DATABASE_NAME')
+DATABASE_USER = os.getenv('DATABASE_USER')
+DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD')
+
+
+
+
 
 
 DATABASE_URL = "postgresql://lounes:lehacker147@localhost/proto"
@@ -50,13 +70,7 @@ async def read_users():
     return users
 
 
-# Endpoint pour récupérer un utilisateur par ID
-@app.get("/users/{user_id}", response_model=UserUpdate)
-async def read_user(user_id: int):
-    user = SessionLocal().query(User).filter(User.id == user_id).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+
 def hash_djb2(s):                                                                                                                                
     hash = 5381
     for x in s:
@@ -74,64 +88,73 @@ def calculate_age(birthdate):
 # This endpoint add user and return "Okay".
 @app.post("/users/create", response_model=dict)
 async def create_user(user: UserCreate):
+    
+    
     password_salt = user.password + salt
     password_hash = hashlib.md5(password_salt.encode()).hexdigest()
-
+    registration = datetime.now()
+        
     age = calculate_age(user.birthdaydate)
     token_hash = hash_djb2(user.email + user.firstname + user.lastname + salt)
-
     query = text(
-        "INSERT INTO users (email,password,firstname,lastname,birthdaydate,address,postalcode,age,token) VALUES (:email, :password, :firstname, :lastname, :birthday_date, :address, :postal_code, :age, :token) RETURNING *"
+        "INSERT INTO users (email,password,firstname,lastname,birthdaydate,address,postalcode, age, meta, registrationdate, token, role) VALUES (:email, :password, :firstname, :lastname, :birthdaydate, :address, :postalcode, :age, :meta, :registrationdate, :token, :role) RETURNING *"
     )
     values = {
         "email" : user.email,
         "password" : password_hash,
         "firstname" : user.firstname,
         "lastname" : user.lastname,
-        "birthday_date" : user.birthdaydate,
+        "birthdaydate" : user.birthdaydate,
         "address" : user.address,
-        "postal_code" : user.postalcode,
-        "age" : age,
-        "token" : token_hash
-
-        # "meta" : json.dumps(user.meta),
-        # "token" : user.token,
-        # "role" : user.role
+        "postalcode" : user.postalcode,
+        "age": age,
+        "meta" : json.dumps(user.meta),
+        "registrationdate" : registration,
+        "token" : token_hash,
+        "role" : user.role
     }
     with engine.begin() as conn :
         result = conn.execute(query, values)
     return {'message' : 'Okay'}
 
+
 def create_jwt_token(data):
     token = jwt.encode(data, SECRET_KEY, algorithm="HS256")
     return token
 
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
 
 # Endpoint : /connect
 # Type : POST
 # Connexion avec un jeton JWT
-@app.post("/connect/", response_model=UserConnect)
+@app.post("/connect/", response_model=TokenResponse)
 async def connect_user(user_connect: UserConnect):
     # Recherchez l'utilisateur dans la base de données en utilisant l'e-mail
-    user = SessionLocal().query(User).filter(User.Email == user_connect.Email).first()
+    user = SessionLocal().query(User).filter(User.email == user_connect.email).first()
 
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Vérifiez si le mot de passe correspond
-    if user.Password != hashlib.md5((user_connect.Password + salt).encode()).hexdigest():
+    if user.password != hashlib.md5((user_connect.password + salt).encode()).hexdigest():
         raise HTTPException(status_code=401, detail="Invalid password")
 
     # Authentification réussie, générez le jeton JWT
-    jwt_data = {"sub": user.Email}  # Vous pouvez ajouter d'autres informations au jeton
+    jwt_data = {"sub": user.email}  # Vous pouvez ajouter d'autres informations au jeton
     jwt_token = create_jwt_token(jwt_data)
 
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
-
-
-
+# Endpoint pour récupérer un utilisateur par ID
+@app.get("/users/{user_id}", response_model=UserUpdate)
+async def read_user(user_id: int):
+    user = SessionLocal().query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
 # Endpoint : /users
@@ -139,21 +162,46 @@ async def connect_user(user_connect: UserConnect):
 # Permet de mettre a jour un utilisateur
 @app.patch("/users/update", response_model=UserUpdate)
 async def update_user(user_id: int, user_update: UserUpdate):
-    # Récupérez l'utilisateur existant en fonction de l'ID
+    # Récupére l'utilisateur existant en fonction de l'ID
     user = SessionLocal().query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Mettez à jour les champs de l'utilisateur avec les données de user_update
+    # Met à jour les champs de l'utilisateur avec les données de user_update
     for key, value in user_update.dict().items():
         setattr(user, key, value)
 
-    # Enregistrez les modifications dans la base de données
+    # Enregistre les modifications dans la base de données
     SessionLocal().commit()
 
     return user
 
+# Endpoint : /users/password
+# Type : POST
+# Permet de mettre a jour password
+@app.post("/users/password", response_model=UpdatePassword)
+async def update_password(jwt_token: int, password_update: UpdatePassword):
+    # Récupére l'utilisateur existant en fonction de l'ID
+    user = SessionLocal().query(User).filter(User.token == jwt_token).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.password != hashlib.md5((password_update.old_password + salt).encode()).hexdigest():
+        raise HTTPException(status_code=400, detail="Ancien mot de passe invalid")
+    
+    if password_update.new_password != password_update.repeat_new_password:
+        raise HTTPException(status_code=400, detail="New password do not match")
+    
+    new_password_salt = password_update.new_password + salt
+    new_password_hash = hashlib.md5(new_password_salt.encode()).hexdigest()
+    user.password = new_password_hash
 
+    # ON ENREGISTRE
+    SessionLocal().commit()
+
+    return password_update
+        
+    
 
 # Endpoint : /users
 # Type : DELETE
