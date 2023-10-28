@@ -1,3 +1,7 @@
+from pydantic import BaseModel, Json, NaiveDatetime
+from typing import Dict
+
+
 class RequestRHCreate(BaseModel):
     UserID: int
     Content: str

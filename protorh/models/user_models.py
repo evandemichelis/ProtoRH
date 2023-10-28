@@ -24,10 +24,10 @@ class UserUpdate(BaseModel):
     birthdaydate: NaiveDatetime
     address: str
     postalcode: str
-    age: int
-    meta: Dict
-    token: str
-    role: str
+    age: int = 0
+    meta: Dict = {}
+    token: str = ""  
+    role: str = "" 
 
 class UserConnect(BaseModel):
     email: str
@@ -38,3 +38,11 @@ class UpdatePassword(BaseModel):
     old_password: str
     new_password: str
     repeat_new_password: str
+
+class UserResponse(BaseModel):
+    email: str
+    firstname: str
+    lastname: str
+    role: str
+    address: str = ""
+    postalcode: str = ""
