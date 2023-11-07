@@ -60,15 +60,15 @@ async def create_event(event: EventCreate):
         result = conn.execute(query, values)
         return result.fetchone()
 
-# # Endpoint : /event
-# # Type : UPDATE
-# # This endpoint update event
-# @app.get("/event", response_model=EventGet)
-# async def get_event(event: EventGet):
-#     event = SessionLocal().query(Event).filter(Event.id == event_id).first()
-#     if event is None:
-#         raise HTTPException(status_code=404, detail="Event not found")
-#     return event
+# Endpoint : /event
+# Type : UPDATE
+# This endpoint update event
+@app.get("/event", response_model=EventGet)
+async def get_event(event: EventGet):
+    event = SessionLocal().query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
 
 
 # Endpoint : /event
