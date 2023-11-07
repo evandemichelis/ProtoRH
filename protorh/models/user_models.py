@@ -41,8 +41,13 @@ class UpdatePassword(BaseModel):
 
 class UserResponse(BaseModel):
     email: str
+    password: str
     firstname: str
     lastname: str
-    role: str
-    address: str = ""
-    postalcode: str = ""
+    birthdaydate: NaiveDatetime
+    address: str
+    postalcode: str
+    age: int = 0
+    meta: Dict = {}
+    token: str = ""  
+    role: str = ""

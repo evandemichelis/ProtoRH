@@ -21,6 +21,9 @@ class User(Base):
     registrationdate = Column(DateTime)
     token = Column(String)
     role = Column(String)
+    profile_picture = Column(String) 
+    department_id = Column(Integer, ForeignKey('department.id'))
+    departments = relationship("Department", secondary="user_department", back_populates="users")
 
 # Modèle Department
 class Department(Base):
@@ -28,4 +31,11 @@ class Department(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
+    users = relationship("User", secondary="user_department", back_populates="departments")
 
+
+class UserDepartment(Base):
+    __tablename__ = "user_department"
+
+    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
+    department_id = Column(Integer, ForeignKey('department.id'), primary_key=True)
