@@ -39,3 +39,31 @@ class UserDepartment(Base):
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     department_id = Column(Integer, ForeignKey('department.id'), primary_key=True)
+
+
+
+# Modèle RequestRH
+class RequestRH(Base):
+    __tablename__ = "requestrh"
+
+    id = Column(Integer, primary_key=True, index=True)
+    UserID = Column(Integer, ForeignKey("users.id"))
+    content = Column(String)
+    RegistrationDate = Column(DateTime)
+    Visibility = Column(Boolean)
+    Close = Column(Boolean)
+    LastAction = Column(DateTime)
+    delete_date = Column(DateTime)
+    ContentHistory = Column(JSON)
+
+
+# Modèle Event
+class Event(Base):
+    __tablename__ = "event"
+
+    id = Column(Integer, primary_key=True, index=True)
+    Name = Column(String)
+    Date = Column(DateTime)
+    Description = Column(String)
+    UserID = Column(Integer)
+    DepartmentsID = Column(Integer)

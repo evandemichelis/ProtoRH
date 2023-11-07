@@ -23,7 +23,7 @@ CREATE TABLE department (
 );
 
 
-CREATE TABLE request_rh (
+CREATE TABLE requestrh (
     id SERIAL PRIMARY KEY,
     UserID INT,
     Content TEXT,

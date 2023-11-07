@@ -1,43 +1,20 @@
-import subprocess, uvicorn
-from psycopg2 import Date
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy import DATE, DateTime, JSON, Boolean, create_engine, Column, Integer, String, Float, text, or_
+from fastapi import FastAPI, HTTPException, UploadFile, Header, APIRouter
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from jose import JWSError, JWTError, jwt
-from passlib.context import CryptContext
-from sqlalchemy.ext.declarative import declarative_base
+from jose import JWSError, jwt
 from sqlalchemy_utils import database_exists, create_database
-from pydantic import BaseModel, Json, NaiveDatetime
-from typing import Dict, List
+from pydantic import BaseModel
 import json
-from models.department_models import DepartmentCreate, DepartmentList
-from models.models import Base, User, Department
+from models.models import Base, User
 from models.user_models import UserCreate, UserUpdate, UserConnect, UpdatePassword, UserResponse
 import hashlib
 from pathlib import Path
 from PIL import Image
 import os
 import io
-from dotenv import load_dotenv
-
-env_file_path = os.path.join(os.path.dirname(__file__), 'protorh.env')
-
-if os.path.exists(env_file_path):
-    load_dotenv(dotenv_path=env_file_path)
-
-
-
-salt = os.getenv('salt')
-SECRET_KEY = os.getenv('SECRET_KEY')
-DATABASE_HOST = os.getenv('DATABASE_HOST')
-DATABASE_PORT = os.getenv('DATABASE_PORT')
-DATABASE_NAME = os.getenv('DATABASE_NAME')
-DATABASE_USER = os.getenv('DATABASE_USER')
-DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD')
-
-
+from typing import List
+from config import salt, SECRET_KEY
 
 
 DATABASE_URL = "postgresql://lounes:lehacker147@localhost/proto"
@@ -54,18 +31,14 @@ Base.metadata.create_all(bind=engine)
 
 
 
-app = FastAPI()
-#################################################
-#                                               #
-#                                               #
-#                  START USERS                  #
-#                                               #
-#                                               #
-#################################################
+user_router = APIRouter()
+
+
+
 
 
 # Endpoint pour récupérer la liste des utilisateurs
-@app.get("/users/", response_model=List[UserUpdate])
+@user_router.get("/users/", response_model=List[UserUpdate])
 async def read_users():
     users = SessionLocal().query(User).all()
     return users
@@ -87,7 +60,7 @@ def calculate_age(birthdate):
 # Endpoint : /add/user/
 # Type : POST
 # This endpoint add user and return "Okay".
-@app.post("/users/create", response_model=dict)
+@user_router.post("/users/create", response_model=dict)
 async def create_user(user: UserCreate):
     
     
@@ -116,7 +89,7 @@ async def create_user(user: UserCreate):
     }
     with engine.begin() as conn :
         result = conn.execute(query, values)
-    return {'message' : 'Okay'}
+    return {'message' : 'Utilisateur crée'}
 
 
 def create_jwt_token(data):
@@ -127,16 +100,17 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
-# Endpoint : /connect
-# Type : POST
 # Connexion avec un jeton JWT temporaire
-@app.post("/connect/", response_model=TokenResponse)
+@user_router.post("/connect/", response_model=TokenResponse)
 async def connect_user(user_connect: UserConnect):
     # Recherche l'utilisateur dans la base de données en utilisant l'e-mail
     user = SessionLocal().query(User).filter(User.email == user_connect.email).first()
 
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    if not salt:
+        raise HTTPException(status_code=404, detail="User not ggfound")
 
     # Vérifie si le mot de passe correspond
     if user.password != hashlib.md5((user_connect.password + salt).encode()).hexdigest():
@@ -145,43 +119,54 @@ async def connect_user(user_connect: UserConnect):
     # Générez un jeton JWT temporaire
     jwt_data = {
         "email": user.email,
-        "exp": datetime.utcnow() + timedelta(minutes=3600)
+        "exp": datetime.utcnow() + timedelta(minutes=3600),
+        "role": user.role
     }
+
     jwt_token = jwt.encode(jwt_data, SECRET_KEY, algorithm="HS256")
 
     return {"access_token": jwt_token, "token_type": "bearer"}
 
 
-# Endpoint : /users/{user_id}
-# Type : GET
-# Récupération d'utilisateur
-@app.get("/users/{user_id}", response_model=UserResponse)
-async def read_user(user_id: int, jwt_token: str):
+
+
+from fastapi import HTTPException
+
+@user_router.get("/users/{user_id}", response_model=UserResponse)
+async def read_user(user_id: int, authorization: str = Header(None)):
     try:
-        # Verify the JWT token and retrieve claims
+        # Vérifiez si le jeton JWT est fourni dans l'en-tête d'autorisation
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization token is missing")
+
+        # Extrait le jeton JWT de l'en-tête d'autorisation
+        jwt_token = authorization.split(' ')[-1]
+
+        # Vérifiez le jeton JWT et récupérez les revendications
         jwt_data = jwt.decode(jwt_token, SECRET_KEY, algorithms=["HS256"])
         email = jwt_data.get("email")
 
-        # Retrieve the user from the database based on user_id
+        # Récupérez l'utilisateur depuis la base de données en fonction de user_id
         user = SessionLocal().query(User).filter(User.id == user_id).first()
 
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Check the user's role to determine which fields to return
+        # Vérifiez le rôle de l'utilisateur pour déterminer les champs à renvoyer
         user_data = UserResponse(
             email=user.email,
             firstname=user.firstname,
             lastname=user.lastname,
             role=user.role,
+            age=user.age,
+            birthdaydate=user.birthdaydate,
+            password=user.password, 
+            address=user.address,
+            postalcode=user.postalcode
         )
 
-        # If the user is an admin, return all fields
+        # Si l'utilisateur est un administrateur, renvoyez tous les champs
         if user.role == "admin":
-            user_data.address = user.address
-            user_data.postalcode = user.postalcode
-            user_data.age = user.age
-            user_data.birthdaydate = user.birthdaydate
             user_data.meta = user.meta
             user_data.token = user.token
 
@@ -190,37 +175,40 @@ async def read_user(user_id: int, jwt_token: str):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+
+from fastapi import HTTPException
+
+# ...
+
 # Endpoint : /users/update
 # Type : POST
 # Permet de mettre à jour un utilisateur
-@app.post("/users/update", response_model=UserUpdate)
-async def update_user(user_id: int, user_update: UserUpdate, jwt_token: str):
+@user_router.patch("/users/update/{user_id}", response_model=dict)
+async def update_user(user_id: int, user_update: UserUpdate, authorization: str = Header(None)):
     try:
-        # Verify the JWT token and retrieve claims
+        # Vérifiez si le jeton JWT est fourni dans l'en-tête d'autorisation
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization token is missing")
+
+        # Extrait le jeton JWT de l'en-tête d'autorisation
+        jwt_token = authorization.split(' ')[-1]
+
+        # Vérifiez le jeton JWT et récupérez les revendications
         jwt_data = jwt.decode(jwt_token, SECRET_KEY, algorithms=["HS256"])
         email = jwt_data.get("email")
-
-        # Retrieve the user to be updated
-        user = SessionLocal().query(User).filter(User.email == email).first()
+        # Rechercher l'utilisateur en fonction de user_id
+        user = SessionLocal().query(User).filter(User.id == user_id).first()
 
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Check if the user is trying to modify restricted fields
-        if user_update.firstname != user.firstname and user.role != "admin":
-            raise HTTPException(status_code=400, detail="Modifying 'firstname' field is not allowed")
+        # Si l'utilisateur n'est pas un administrateur et tente de modifier des champs interdits, renvoyer une erreur
+        if user.role != "admin":
+            raise HTTPException(status_code=403, detail="Only administrators can modify user fields")
 
-        if user_update.lastname != user.lastname and user.role != "admin":
-            raise HTTPException(status_code=400, detail="Modifying 'lastname' field is not allowed")
+        # Construction de la requête SQL pour mettre à jour les informations de l'utilisateur
+        query = text("UPDATE users SET email = :email, birthdaydate = :birthdaydate, address = :address, postalcode = :postalcode WHERE id = :user_id RETURNING *")
 
-        if user_update.role != user.role and user.role != "admin":
-            raise HTTPException(status_code=400, detail="Modifying 'role' field is not allowed")
-
-        # Construct the SQL query to update user information
-        query = text(
-            "UPDATE users SET email = :email, birthdaydate = :birthdaydate, address = :address, postalcode = :postalcode "
-            "WHERE id = :user_id RETURNING *"
-        )
         values = {
             "user_id": user_id,
             "email": user_update.email,
@@ -229,7 +217,7 @@ async def update_user(user_id: int, user_update: UserUpdate, jwt_token: str):
             "postalcode": user_update.postalcode,
         }
 
-        # Execute the SQL query and get the updated user
+        # Exécution de la requête SQL pour mettre à jour les informations de l'utilisateur
         with engine.begin() as conn:
             result = conn.execute(query, values)
             updated_user = result.fetchone()
@@ -237,20 +225,29 @@ async def update_user(user_id: int, user_update: UserUpdate, jwt_token: str):
         if updated_user is None:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Return the updated user data
-        return UserUpdate(updated_user)
+        return {"message": "User updated"}
+
     except JWSError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
 
 
 
 # Endpoint : /users/password
 # Type : PATCH
 # Update the user's password
-@app.patch("/users/password", response_model=UpdatePassword)
-async def update_password(jwt_token: str, password_update: UpdatePassword):
+@user_router.patch("/users/password", response_model=UpdatePassword)
+async def update_password(password_update: UpdatePassword, authorization: str = Header(None)):
     try:
-        # Verify the JWT token and retrieve claims
+        # Vérifiez si le jeton JWT est fourni dans l'en-tête d'autorisation
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization token is missing")
+
+        # Extrait le jeton JWT de l'en-tête d'autorisation
+        jwt_token = authorization.split(' ')[-1]
+
+        # Vérifiez le jeton JWT et récupérez les revendications
         jwt_data = jwt.decode(jwt_token, SECRET_KEY, algorithms=["HS256"])
         email = jwt_data.get("email")
 
@@ -294,7 +291,7 @@ async def update_password(jwt_token: str, password_update: UpdatePassword):
 # Endpoint : /upload/picture/user/{user_id}
 # Type : POST
 # Permet de télécharger une image de profil pour un utilisateur spécifique
-@app.post("/upload/picture/user/{user_id}", response_model=str)
+@user_router.post("/upload/picture/user/{user_id}", response_model=str)
 async def upload_user_profile_picture(user_id: int, image: UploadFile):
     user = SessionLocal().query(User).filter(User.id == user_id).first()
 
@@ -335,7 +332,7 @@ async def upload_user_profile_picture(user_id: int, image: UploadFile):
 # Endpoint : /picture/user/{user_id}
 # Type : POST
 # Permet de télécharger une image de profil pour un utilisateur spécifique
-@app.get("/picture/user/{user_id}", response_model=str)
+@user_router.get("/picture/user/{user_id}", response_model=str)
 async def get_user_profile_picture(user_id: int):
     # Query the database to get the user's profile picture filename
     query = text("SELECT profile_picture FROM users WHERE id = :user_id")
@@ -357,11 +354,41 @@ async def get_user_profile_picture(user_id: int):
 
     return {"image_url": str(picture_path)}
 
-#################################################
-#                                               #
-#                                               #
-#                  END USERS                    #
-#                                               #
-#                                               #
-#################################################
 
+from fastapi import HTTPException
+
+@user_router.delete("/users/{user_id}", response_model=UserCreate)
+async def delete_user(user_id: int, authorization: str = Header(None)):
+    try:
+        # Vérifiez si le jeton JWT est fourni dans l'en-tête d'autorisation
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization token is missing")
+
+        # Extrait le jeton JWT de l'en-tête d'autorisation
+        jwt_token = authorization.split(' ')[-1]
+
+        # Vérifiez le jeton JWT et récupérez les revendications
+        jwt_data = jwt.decode(jwt_token, SECRET_KEY, algorithms=["HS256"])
+        email = jwt_data.get("email")
+
+        # Create a new session for this request
+        db = SessionLocal()
+
+        # Search for the user to delete based on user_id
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if user is None:
+            db.close()
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Delete the user from the database
+        db.delete(user)
+        db.commit()
+
+        # Close the session
+        db.close()
+
+        return user
+
+    except JWSError:
+        raise HTTPException(status_code=401, detail="Invalid token")

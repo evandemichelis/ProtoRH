@@ -1,9 +1,17 @@
-# config.py
+import os
+from dotenv import load_dotenv
 
-salt = "a5601f40db7b79d80cc50e0a4649157d"
-SECRET_KEY = "8d87c155fc7559c9e6ecba07d59aed5e8a12e7c460a1e9740b81fc38bf90c53d"
-DATABASE_HOST = "localhost"
-DATABASE_PORT = 4242
-DATABASE_NAME = "proto"
-DATABASE_USER = "lounes"
-DATABASE_PASSWORD = "lehacker147"
+env_file_path = os.path.join(os.path.dirname(__file__), 'protorh.env')
+
+if os.path.exists(env_file_path):
+    load_dotenv(dotenv_path=env_file_path)
+
+
+
+salt = os.getenv('salt')
+SECRET_KEY = os.getenv('SECRET_KEY')
+DATABASE_HOST = os.getenv('DATABASE_HOST')
+DATABASE_PORT = os.getenv('DATABASE_PORT')
+DATABASE_NAME = os.getenv('DATABASE_NAME')
+DATABASE_USER = os.getenv('DATABASE_USER')
+DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD')
