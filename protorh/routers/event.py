@@ -61,7 +61,7 @@ async def create_event(event: EventCreate):
         return result.fetchone()
 
 # Endpoint : /event
-# Type : UPDATE
+# Type : GET
 # This endpoint update event
 @app.get("/event", response_model=EventGet)
 async def get_event(event: EventGet):

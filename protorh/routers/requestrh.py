@@ -156,29 +156,29 @@ async def remove_requestrh(request_data: RequestRHRemove, authorization: str = H
 
 
 
-# # Endpoint : /requestrh
-# # Type : UPDATE
-# # This endpoint update requestrh
-# @requestrh_router.post("/rh/msg/update", response_model=RequestRHUpdate)
-# async def update_requestrh(requestrh: RequestRHUpdate):
-#     requestrh = SessionLocal().query(RequestRH).filter(RequestRH.id == requestrh_id).first()
-#     if requestrh is None:
-#         raise HTTPException(status_code=404, detail="User not found")
+# Endpoint : /requestrh
+# Type : UPDATE
+# This endpoint update requestrh
+@requestrh_router.post("/rh/msg/update", response_model=RequestRHUpdate)
+async def update_requestrh(requestrh: RequestRHUpdate):
+    requestrh = SessionLocal().query(RequestRH).filter(RequestRH.id == requestrh_id).first()
+    if requestrh is None:
+        raise HTTPException(status_code=404, detail="User not found")
 
-#     for key, value in requestrh_update.dict().items():
-#         setattr(requestrh, key, value)
+    for key, value in requestrh_update.dict().items():
+        setattr(requestrh, key, value)
 
-#     SessionLocal().commit()
+    SessionLocal().commit()
 
-#     return requestrh
+    return requestrh
 
 
-# # Endpoint : /requestrh
-# # Type : UPDATE
-# # This endpoint get the requests
-# @requestrh_router.get("/rh/msg", response_model=RequestRHUpdate)
-# async def read_requestrh(user_id: int):
-#     requestrh = SessionLocal().query(RequestRH).filter(RequestRH.id == requesth_id).first()
-#     if requestrh is None:
-#         raise HTTPException(status_code=404, detail="Request not found")
-#     return requestrh
+# Endpoint : /requestrh
+# Type : UPDATE
+# This endpoint get the requests
+@requestrh_router.get("/rh/msg", response_model=RequestRHUpdate)
+async def read_requestrh(user_id: int):
+    requestrh = SessionLocal().query(RequestRH).filter(RequestRH.id == requesth_id).first()
+    if requestrh is None:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return requestrh
